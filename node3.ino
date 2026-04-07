@@ -1,5 +1,5 @@
 // ============================================================
-//  NODE C — Fire Alarm Mesh Node (Relay)
+//  NODE B — Fire Alarm Mesh Node (Relay)
 // ============================================================
 
 #include <WiFi.h>
@@ -13,7 +13,7 @@
 uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 // ── Node Identity ────────────────────────────────────────────
-#define NODE_ID "NODE_C"
+#define NODE_ID "NODE_B"
 
 // ── Message Struct ───────────────────────────────────────────
 typedef struct FireMessage {
@@ -53,17 +53,17 @@ uint32_t newMessageID() {
   return (uint32_t)esp_random();
 }
 
-// ── ESP-NOW Receive Callback ─────────────────────────────────
+// ── ESP-NOW Receive Callback (CORRECT) ───────────────────────
 void onReceive(const esp_now_recv_info *info, const uint8_t *data, int len) {
   if (len != sizeof(FireMessage)) return;
 
   FireMessage msg;
-  memcpy(&msg, data, sizeof(msg));
+  memcpy(&msg, data, sizeof(FireMessage));
 
   if (alreadySeen(msg.messageID)) return;
   markSeen(msg.messageID);
 
-  Serial.printf("[NodeC] From %s | ID:%u | Fire:%d | Hops:%d\n",
+  Serial.printf("[NodeB] From %s | ID:%u | Fire:%d | Hops:%d\n",
                 msg.nodeID, msg.messageID, msg.isFire, msg.hopCount);
 
   // Actuate buzzer, but DO NOT change fireState here
@@ -73,22 +73,21 @@ void onReceive(const esp_now_recv_info *info, const uint8_t *data, int len) {
     digitalWrite(BUZZER, LOW);
   }
 
-  // Relay forward
   if (msg.hopCount > 0) {
     msg.hopCount--;
-    esp_now_send(broadcastMAC, (uint8_t *)&msg, sizeof(msg));
+    esp_now_send(broadcastMAC, (uint8_t *)&msg, sizeof(FireMessage));
   }
 }
 
 // ── ESP-NOW Send Callback (FIXED v3 Signature) ───────────────
 void onSent(const esp_now_send_info_t *info, esp_now_send_status_t status) {
-  Serial.printf("[NodeC] Send status: %s\n",
+  Serial.printf("[NodeB] Send status: %s\n",
                 status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL");
 }
 
 // ── Calibration ──────────────────────────────────────────────
 void calibrateBaseline() {
-  Serial.println("[NodeC] Calibrating Baseline...");
+  Serial.println("[NodeB] Calibrating Baseline...");
   long sum = 0;
   for (int i = 0; i < 50; i++) {
     sum += analogRead(MQ2);
@@ -96,7 +95,7 @@ void calibrateBaseline() {
   }
   baseline = sum / 50.0;
   emaValue = baseline;
-  Serial.printf("[NodeC] Baseline set: %.1f\n", baseline);
+  Serial.printf("[NodeB] Baseline set: %.1f\n", baseline);
 }
 
 // ── Setup ────────────────────────────────────────────────────
@@ -124,7 +123,7 @@ void setup() {
   peer.encrypt = false;
   esp_now_add_peer(&peer);
 
-  Serial.println("[NodeC] Ready");
+  Serial.println("[NodeB] Ready");
 }
 
 // ── Loop ─────────────────────────────────────────────────────
