@@ -33,10 +33,10 @@ WebServer  webServer(80);
 bool       portalActive = false;
 
 // ── Message Struct ───────────────────────────────────────────
-// Sent over ESP-NOW. Packed to minimise radio payload.
-typedef struct __attribute__((packed)) FireMessage {
+// Sent over ESP-NOW.
+typedef struct FireMessage {
   char     nodeID[8];      // Origin node identifier
-  uint32_t messageID;      // Random unique ID (broadcast storm prevention)
+  uint32_t messageID;      // Random unique ID
   uint8_t  hopCount;       // Decremented each relay; drop when 0
   bool     isFire;         // true = FIRE, false = SAFE
   uint16_t smokeLevel;     // Raw (EMA-filtered) sensor reading
