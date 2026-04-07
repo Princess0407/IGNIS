@@ -22,7 +22,7 @@ uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 #define NODE_ID "NODE_A"
 
 // ── Captive Portal Config ────────────────────────────────────
-const char* AP_SSID     = "🚨 EVACUATE BUILDING 🚨";
+const char* AP_SSID     = "EVACUATE BUILDING!!";
 const char* AP_PASSWORD = "";           // Open network — no password
 const byte  DNS_PORT    = 53;
 IPAddress   AP_IP(192, 168, 4, 1);
@@ -62,8 +62,8 @@ void markSeen(uint32_t id) {
 bool     fireState    = false;
 float    emaValue     = 0.0;
 float    baseline     = 0.0;
-const float EMA_ALPHA = 0.2;   // Smoothing factor (0=no update, 1=no smoothing)
-const float FIRE_PCT  = 0.20;  // Trigger if EMA > baseline * (1 + FIRE_PCT)
+const float EMA_ALPHA = 0.2; // Smoothing factor (0=no update, 1=no smoothing)
+const float FIRE_PCT  = 0.20; // Trigger if EMA > baseline * (1 + FIRE_PCT)
 
 // ── Helper: generate a random 32-bit message ID ──────────────
 uint32_t newMessageID() {
@@ -73,7 +73,6 @@ uint32_t newMessageID() {
 // ── ESP-NOW Receive Callback ─────────────────────────────────
 void onReceive(const esp_now_recv_info *info, const uint8_t *data, int len) {
   if (len != sizeof(FireMessage)) return;
-
   FireMessage msg;
   memcpy(&msg, data, sizeof(FireMessage));
 
@@ -220,13 +219,13 @@ const char EVAC_PAGE[] PROGMEM = R"rawliteral(
   }
 
   @keyframes barPulse {
-    from { opacity: 1;   transform: scaleX(1);    }
+    from { opacity: 1;   transform: scaleX(1); }
     to   { opacity: 0.4; transform: scaleX(0.96); }
   }
 </style>
 </head>
 <body>
-  <div class="icon">🔥</div>
+  <div class="icon"></div>
   <h1>FIRE DETECTED</h1>
   <p class="sub">Please Evacuate Immediately</p>
   <div class="bar"></div>
@@ -270,6 +269,7 @@ void startCaptivePortal() {
   webServer.on("/generate_204",        handleRoot);  // Android captive portal probe
   webServer.on("/connecttest.txt",     handleRoot);  // Windows probe
   webServer.onNotFound(handleNotFound);
+
   webServer.begin();
 
   portalActive = true;
@@ -341,9 +341,6 @@ void loop() {
   emaValue = EMA_ALPHA * raw + (1.0 - EMA_ALPHA) * emaValue;
   float fireThreshold = baseline * (1.0 + FIRE_PCT);
 
-  Serial.printf("[NodeA] Raw:%d  EMA:%.1f  Baseline:%.1f  Threshold:%.1f\n",
-                raw, emaValue, baseline, fireThreshold);
-
   // ── Fire detection ───────────────────────────────────────
   if (emaValue > fireThreshold && !fireState) {
     fireState = true;
@@ -357,12 +354,16 @@ void loop() {
     msg.isFire     = true;
     msg.smokeLevel = (uint16_t)emaValue;
 
-    markSeen(msg.messageID);   // Don't relay our own packet back
-    esp_now_send(broadcastMAC, (uint8_t *)&msg, sizeof(FireMessage));
+    markSeen(msg.messageID);
+
+    // THE TRIPLE-SEND FIX
+    for(int i = 0; i < 3; i++) {
+      esp_now_send(broadcastMAC, (uint8_t *)&msg, sizeof(FireMessage));
+      delay(20);
+    }
 
     if (!portalActive) startCaptivePortal();
-
-    Serial.printf("[NodeA] 🔥 FIRE sent | MsgID:%u\n", msg.messageID);
+    Serial.printf("[NodeA]  FIRE sent | MsgID:%u\n", msg.messageID);
   }
   else if (emaValue <= fireThreshold && fireState) {
     fireState = false;
@@ -378,7 +379,7 @@ void loop() {
     markSeen(msg.messageID);
     esp_now_send(broadcastMAC, (uint8_t *)&msg, sizeof(FireMessage));
 
-    Serial.printf("[NodeA] ✅ SAFE sent | MsgID:%u\n", msg.messageID);
+    Serial.printf("[NodeA] SAFE sent | MsgID:%u\n", msg.messageID);
   }
 
   delay(300);
