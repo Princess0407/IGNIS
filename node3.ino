@@ -20,7 +20,7 @@ uint8_t broadcastMAC[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 // ── Message Struct ───────────────────────────────────────────
 // Sent over ESP-NOW. Packed to minimise radio payload.
-typedef struct __attribute__((packed)) FireMessage {
+typedef struct FireMessage {
   char     nodeID[8];      // Origin node identifier
   uint32_t messageID;      // Random unique ID
   uint8_t  hopCount;       // Decremented each relay; drop when 0
